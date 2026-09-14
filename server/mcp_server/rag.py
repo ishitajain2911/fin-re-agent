@@ -91,3 +91,25 @@ def fetch_filing_document(cik: str, accession_number: str, primary_document: str
     response = httpx.get(url, headers=headers)
     return response.text
 
+def keyword_search_chunks(collection, term: str, n_results: int = 3):
+    results = collection.get(where_document ={"$contains":term}, limit= n_results)
+    return results
+
+
+if __name__ == "__main__":
+    client = chromadb.Client()
+    test_collection = client.create_collection("test")
+    fake_ids = ["1", "2", "3"]
+
+    fake_documents = [
+        "The company recorded a significant impairment charge on goodwill this quarter.",
+        "Revenue increased 15% year over year due to strong product demand.",
+        "Management reviewed impairment testing procedures during the annual audit.",
+    ]
+    test_term = "impairment"
+
+    test_collection.add(ids= fake_ids, documents=fake_documents)
+    result = keyword_search_chunks(test_collection, test_term)
+    print(result["documents"])
+
+    
