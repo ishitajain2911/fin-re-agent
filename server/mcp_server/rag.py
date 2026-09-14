@@ -5,9 +5,10 @@ import voyageai
 import chromadb
 import time
 import httpx
+import anthropic
+from server.schemas import RetrievalGrade
 
 load_dotenv()
-
 def clean_html(raw_html: str) -> str:
     soup = BeautifulSoup(raw_html, "html.parser")
     for tag in soup(["script", "style"]):
@@ -103,13 +104,53 @@ def keyword_search_chunks(collection, term: str, n_results: int = 3):
 def filter_chunks_by_metadata(collection, form_type: str, n_results: int = 3):
     results = collection.get(where={"form_type": form_type}, limit=n_results)
     return results
-    
+
+client = anthropic.Anthropic()
+
+def grade_retrieval(query: str, retrieved_text: str) -> RetrievalGrade:
+    system_prompt = (
+     "You are a retrieval-quality grader for a financial research system. Given a "
+    "user's search query and a piece of text retrieved for it, your job is to judge "
+    "whether that text actually answers or addresses the query.\n\n"
+    "Rules:\n"
+    "- Be skeptical of matches that are merely topically nearby but don't actually "
+    "contain the answer (e.g. cover-page boilerplate or unrelated risk-factor text "
+    "when the query asks about revenue).\n"
+    "- Judge relevance only — not writing quality, completeness, or tone.\n"
+    "- If relevant=False, you MUST provide a rewritten_query: a sharper, more "
+    "specific version of the original query more likely to retrieve the right text. "
+    "If relevant=True, leave rewritten_query empty."
+    )
+    user_facing_content= f" query: {query} , retrieved_text: {retrieved_text}"    
+
+    response = client.messages.parse(
+    max_tokens=500,
+    model="claude-sonnet-5",
+    system=system_prompt,
+    messages=[{"role": "user", "content": user_facing_content}],
+    output_format=RetrievalGrade,
+    )
+    return response.parsed_output
     
 
+def retrieve_with_grading(collection, query: str, search_fn, max_attempts: int = 2):
+    
+    for attempt in range(max_attempts):
+        results = search_fn(collection,query)
+        filtered_result= results["documents"]
+        retrieved_text=" ".join(filtered_result)
+        grade = grade_retrieval(query,retrieved_text)
+        if grade.relevant:
+            return results
+        else:
+            query = grade.rewritten_query
+
+    return results
+    
 
 if __name__ == "__main__":
-    client = chromadb.Client()
-    test_collection = client.create_collection("test")
+    chroma_client = chromadb.Client()
+    test_collection = chroma_client.create_collection("test")
     fake_ids = ["1", "2", "3"]
 
     fake_documents = [
@@ -123,7 +164,7 @@ if __name__ == "__main__":
     result = keyword_search_chunks(test_collection, test_term)
     print(result["documents"])
 
-    test_metadata_collection= client.create_collection("test_metadata")
+    test_metadata_collection= chroma_client.create_collection("test_metadata")
 
     fake_ids_meta = ["1", "2", "3", "4"]
 
@@ -147,6 +188,21 @@ if __name__ == "__main__":
     result = filter_chunks_by_metadata(test_metadata_collection,test_form_type)
     print (result["documents"])
     print(result["metadatas"])
-    
+
+    grading_test_collection = chroma_client.create_collection("test_grading")
+
+    fake_ids_grading = ["1", "2", "3"]
+
+    fake_documents_grading = [
+        "Total revenue for the quarter grew 18% year over year, driven by strong demand.",
+        "Revenue by segment: data center products grew fastest, followed by consumer products.",
+        "Gross margin expanded due to favorable product mix and higher revenue per unit.",
+    ]
+
+    bad_query = "employee headcount and benefits"
+
+    grading_test_collection.add(ids=fake_ids_grading,documents= fake_documents_grading)
+    result = retrieve_with_grading(grading_test_collection,bad_query,keyword_search_chunks ,max_attempts=2)
+    print(result["documents"])
 
     
