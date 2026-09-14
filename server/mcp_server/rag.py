@@ -44,11 +44,14 @@ def embed_chunks(chunks: list[str]) -> list[list[float]]:
     return all_embeddings
 
 
-def store_chunks(chunks: list[str], embeddings: list[list[float]]) -> None:
+def store_chunks(chunks: list[str], embeddings: list[list[float]],form_type:str,filing_date:str) -> None:
     client = chromadb.Client()  
     collection = client.create_collection("filings")
     ids = [str(index) for index, chunk in enumerate(chunks)]
-    collection.add(ids=ids, embeddings=embeddings, documents=chunks)
+    chunk_metadata = {"form_type": form_type, "filing_date": filing_date}
+    metadatas = [chunk_metadata for _ in chunks] 
+
+    collection.add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
     return collection
 
 def search_chunks(collection, query: str, n_results: int = 3):
@@ -79,7 +82,8 @@ def get_recent_filing(cik: str) -> dict:
 
     for index, form in enumerate(filings["form"]):
         if form in ("10-K","10-Q"):
-            return filings["accessionNumber"][index], filings["primaryDocument"][index]
+            return filings["accessionNumber"][index], filings["primaryDocument"][index],form,filings["filingDate"][index]
+        
 
 
 
@@ -94,6 +98,13 @@ def fetch_filing_document(cik: str, accession_number: str, primary_document: str
 def keyword_search_chunks(collection, term: str, n_results: int = 3):
     results = collection.get(where_document ={"$contains":term}, limit= n_results)
     return results
+
+
+def filter_chunks_by_metadata(collection, form_type: str, n_results: int = 3):
+    results = collection.get(where={"form_type": form_type}, limit=n_results)
+    return results
+    
+    
 
 
 if __name__ == "__main__":
@@ -111,5 +122,31 @@ if __name__ == "__main__":
     test_collection.add(ids= fake_ids, documents=fake_documents)
     result = keyword_search_chunks(test_collection, test_term)
     print(result["documents"])
+
+    test_metadata_collection= client.create_collection("test_metadata")
+
+    fake_ids_meta = ["1", "2", "3", "4"]
+
+    fake_documents_meta = [
+        "The annual report highlights strong performance across all segments.",
+        "Quarterly revenue increased due to seasonal demand.",
+        "This year's results reflect continued investment in R&D.",
+        "This quarter's results were impacted by supply chain disruptions.",
+    ]
+
+    fake_metadatas = [
+        {"form_type": "10-K", "filing_date": "2025-01-15"},
+        {"form_type": "10-Q", "filing_date": "2025-04-15"},
+        {"form_type": "10-K", "filing_date": "2025-01-15"},
+        {"form_type": "10-Q", "filing_date": "2025-04-15"},
+    ]
+
+    test_form_type = "10-K"
+
+    test_metadata_collection.add(ids=fake_ids_meta,documents=fake_documents_meta,metadatas= fake_metadatas)
+    result = filter_chunks_by_metadata(test_metadata_collection,test_form_type)
+    print (result["documents"])
+    print(result["metadatas"])
+    
 
     
