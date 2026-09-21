@@ -37,7 +37,7 @@ def calculate_revenue_growth(current_revenue: float, prior_revenue: float) -> st
     if prior_revenue <=0:
         return f"Prior revenue not meaningful — prior revenue is {prior_revenue}, i.e. zero or negative so a growth percentage can't be computed / is meaningless.."
     percent_change = (current_revenue - prior_revenue) / prior_revenue * 100 
-    return f"YoY revenue growth: : {percent_change:.2f}% from prior revenue:  {prior_revenue} and current revenue: {current_revenue}"
+    return f"YoY revenue growth: {percent_change:.2f}% from prior revenue:  {prior_revenue} and current revenue: {current_revenue}"
 
 
 if __name__ == "__main__":

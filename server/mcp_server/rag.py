@@ -86,8 +86,6 @@ def get_recent_filing(cik: str) -> dict:
             return filings["accessionNumber"][index], filings["primaryDocument"][index],form,filings["filingDate"][index]
         
 
-
-
 def fetch_filing_document(cik: str, accession_number: str, primary_document: str) -> str:
     cik = int(cik)
     accession_number = accession_number.replace("-","")
