@@ -8,6 +8,15 @@ import httpx
 import anthropic
 from server.schemas import RetrievalGrade
 
+CHROMA_PATH = "data/chroma"
+
+def get_ticker_collection(ticker: str):
+    client = chromadb.PersistentClient(path=CHROMA_PATH)
+    collection = client.get_or_create_collection(f"filings_{ticker.upper()}")
+    return collection
+
+
+
 load_dotenv()
 def clean_html(raw_html: str) -> str:
     soup = BeautifulSoup(raw_html, "html.parser")
@@ -45,15 +54,13 @@ def embed_chunks(chunks: list[str]) -> list[list[float]]:
     return all_embeddings
 
 
-def store_chunks(chunks: list[str], embeddings: list[list[float]],form_type:str,filing_date:str) -> None:
-    client = chromadb.Client()  
-    collection = client.create_collection("filings")
+def store_chunks(ticker:str, chunks: list[str], embeddings: list[list[float]],form_type:str,filing_date:str) -> None:
+    collection=get_ticker_collection(ticker)
     ids = [str(index) for index, chunk in enumerate(chunks)]
     chunk_metadata = {"form_type": form_type, "filing_date": filing_date}
     metadatas = [chunk_metadata for _ in chunks] 
 
     collection.add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
-    return collection
 
 def search_chunks(collection, query: str, n_results: int = 3):
     client = voyageai.Client()
