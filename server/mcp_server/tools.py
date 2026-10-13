@@ -5,6 +5,7 @@ from server.mcp_server.rag import get_cik_for_ticker, get_recent_filing, fetch_f
     
 mcp = FastMCP(
     "fin-research-tools",
+    port=8001,
     transport_security=TransportSecuritySettings(
         allowed_hosts=["127.0.0.1:*", "localhost:*", "decorator-simply-seventy.ngrok-free.dev"]
     ),

@@ -42,3 +42,7 @@ class RetrievalGrade(BaseModel):
         "None/omitted when relevant=True, so the model doesn't generate a pointless "
         "rewrite when the original result was fine."
     ))
+
+class ResearchRequest(BaseModel):
+    ticker:str=Field(description=("The ticker for a stock"))
+    query: str=Field(description=("The query from user"))
