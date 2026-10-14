@@ -33,29 +33,35 @@ def route_after_supervisor(state: ResearchState) -> str:
     return next_step
 
 def fundamentals_node(state: ResearchState) -> dict:
-    prompt=  f" ticker: {state['ticker']} , query: {state['query']}"  # instead of the hardcoded f-string in main.py
+    prompt=  f" ticker: {state['ticker']} , query: {state['query']}"  # instead of the hardcoded f string in main.py
+    try:
+        response = client.beta.messages.tool_runner(
+        max_tokens=1000,
+        model="claude-sonnet-5",
+        messages=[{"role": "user", "content": prompt}],
+        tools=[{"type": "mcp_toolset", "mcp_server_name": "fin-research-tools"}],
+        mcp_servers=[{
+            "type": "url",
+            "url": "https://decorator-simply-seventy.ngrok-free.dev/mcp",
+            "name": "fin-research-tools",
+        }],
+        betas=["mcp-client-2025-11-20"],
+    )
 
-    response = client.beta.messages.tool_runner(
-    max_tokens=1000,
-    model="claude-sonnet-5",
-    messages=[{"role": "user", "content": prompt}],
-    tools=[{"type": "mcp_toolset", "mcp_server_name": "fin-research-tools"}],
-    mcp_servers=[{
-        "type": "url",
-        "url": "https://decorator-simply-seventy.ngrok-free.dev/mcp",
-        "name": "fin-research-tools",
-    }],
-    betas=["mcp-client-2025-11-20"],
-)
+        final_message = None
+        for message in response:
+            final_message = message
 
-    final_message = None
-    for message in response:
-        final_message = message
+        for block in final_message.content:
+            if block.type == "text":
+                return {"rag_result": block.text}
+    
+        return {"rag_result":None}
+    except Exception as e:
+        print(f"fundamentals node failed: {e}")
+        return{"rag_result":None}
 
-    for block in final_message.content:
-        if block.type == "text":
-            return {"rag_result": block.text}
-
+        
 def financial_data_node(state: ResearchState) -> dict:
     ticker= state["ticker"]
     annual_revenue = get_annual_revenue(ticker)
