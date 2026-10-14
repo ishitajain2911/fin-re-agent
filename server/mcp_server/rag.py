@@ -143,8 +143,12 @@ def retrieve_with_grading(collection, query: str, search_fn, max_attempts: int =
     for attempt in range(max_attempts):
         results = search_fn(collection,query)
         filtered_result= results["documents"]
-        retrieved_text=" ".join(filtered_result)
+        if filtered_result and isinstance(filtered_result[0],list):
+            filtered_result = filtered_result[0]
+        retrieved_text= " ".join(filtered_result)
+
         grade = grade_retrieval(query,retrieved_text)
+        print(f"attempt number:{attempt}, the query used: {query}, the grade given: {grade.relevant}, the rewritten_query:{grade.rewritten_query}")
         if grade.relevant:
             return results
         else:

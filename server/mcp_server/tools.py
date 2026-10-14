@@ -1,7 +1,7 @@
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 from server.mcp_server.rag import get_ticker_collection, search_chunks,keyword_search_chunks,filter_chunks_by_metadata
-    
+from server.mcp_server.rag import retrieve_with_grading
 mcp = FastMCP(
     "fin-research-tools",
     port=8001,
@@ -18,7 +18,7 @@ def semantic_search_filings(ticker: str, query: str) -> str:
     if collection.count() ==0:
         return f"No filings ingested for {ticker.upper()} yet."
 
-    results = search_chunks(collection, query)
+    results = retrieve_with_grading(collection, query, search_chunks)
     return str(results)
 
 @mcp.tool()
