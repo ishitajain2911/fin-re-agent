@@ -5,6 +5,7 @@ from server.quant import calculate_pe_ratio, calculate_revenue_growth
 from langgraph.graph import StateGraph, START, END
 from server.schemas import SynthesisReport
 from server.financials import get_annual_revenue
+from datetime import date
 
 
 
@@ -35,7 +36,7 @@ def fundamentals_node(state: ResearchState) -> dict:
     prompt=  f" ticker: {state['ticker']} , query: {state['query']}"  # instead of the hardcoded f-string in main.py
 
     response = client.beta.messages.tool_runner(
-    max_tokens=500,
+    max_tokens=1000,
     model="claude-sonnet-5",
     messages=[{"role": "user", "content": prompt}],
     tools=[{"type": "mcp_toolset", "mcp_server_name": "fin-research-tools"}],
@@ -73,6 +74,7 @@ def quant_node(state: ResearchState) -> dict:
     prompt = f"""You are a quantitative equity analyst.
 
     Ticker: {state['ticker']}
+    Today's date: {date.today()}
     Question: {state['query']}
     Financial data (annual revenue, in millions of USD):
     - Fiscal year ended {financials["current_period_end"]}: ${current_m:,.0f} million
@@ -84,7 +86,8 @@ def quant_node(state: ResearchState) -> dict:
     Use your tools to compute the metrics relevant to the question, then keep it to a few sentences when you
     interpret what they say about the company.
     Only annual revenue is available, and if the question needs valuation figures like P/E, say they are unavailable and don't estimate them.
-    Interpret only what the two revenue figures show, and don't speculate about causes or industry conditions."""    
+    Interpret only what the two revenue figures show, and don't speculate about causes or industry conditions.
+    Filings dated before today are real reported data, not projections."""    
 
     response = client.beta.messages.tool_runner(
         max_tokens=1000,
