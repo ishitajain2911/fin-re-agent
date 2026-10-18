@@ -172,31 +172,19 @@ def synthesis_node(state: ResearchState) -> dict:
         output_format=SynthesisReport,
     )
     report = response.parsed_output   # validated SynthesisReport instance
-
-    sources_agree = False
-
-    if rag is None or quant is None:
-        level = "low"
-    elif sources_agree:
-        level = "high"
-    else:
-        level = "medium"
-
     reasons = []
-
     if rag is None:
         reasons.append("fundamentals specialist did not run")
     if quant is None:
         reasons.append("quant specialist did not run")
 
+    # Hard rule: a missing specialist always means low confidence,
+    # whatever the model said. Otherwise keep the model's own judgement.
     if reasons:
-        reason = f"Confidence limited : {';'.join(reasons)}"
-    else:
-        reason = "Both specialists ran with real data"
+        report.confidence = "low"
+        report.confidence_reason = f"Confidence limited: {'; '.join(reasons)}"
 
     
-    report.confidence = level
-    report.confidence_reason = reason
     
     return {"final_report": report}
 
