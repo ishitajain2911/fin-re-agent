@@ -93,6 +93,8 @@ def quant_node(state: ResearchState) -> dict:
     interpret what they say about the company.
     Only annual revenue is available, and if the question needs valuation figures like P/E, say they are unavailable and don't estimate them.
     Interpret only what the two revenue figures show, and don't speculate about causes or industry conditions.
+    Both figures are full fiscal years, already verified as ~1-year periods. 52/53-week years are normal, so don't question comparability based on the end dates.
+    A large growth rate is a finding to report, not evidence of a data problem.
     Filings dated before today are real reported data, not projections."""    
 
     response = client.beta.messages.tool_runner(
@@ -153,11 +155,15 @@ def synthesis_node(state: ResearchState) -> dict:
         "- Populate each field from the evidence. An empty list is fine when there is "
         "nothing to report — do not pad.\n"
         "- The summary must answer the user's actual question, not give a generic "
-        "company overview."
+        "company overview.\n"
+        "- Only flag an inconsistency if periods don't match (quarter vs year) or related figures don't reconcile beyond rounding (revenue − COGS ≠ gross profit).\n"
+        "- Unusual growth or margin changes are findings, not errors — report them in key_findings.\n"
+        "- Some companies (e.g. insurers and banks) don't report COGS or gross profit at all. A missing figure isn't an inconsistency.\n"
+
     )
 
 
-    # --- 6. the structured call (step 2 shape) ---
+    # --- 6. the structured call  ---
     response = client.messages.parse(
         model="claude-opus-5",
         max_tokens=16000,

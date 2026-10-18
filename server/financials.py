@@ -37,13 +37,21 @@ def get_annual_revenue(ticker: str) -> Optional[dict]:
 
         return {"current_revenue": annual[-1]["val"],"prior_revenue": annual[-2]["val"],"current_period_end": annual[-1]["end"], "prior_period_end": annual[-2]["end"],}
     return None
-        
+
 
 if __name__ == "__main__":
     result = get_annual_revenue("MU")
     print(result)
-    assert result["current_revenue"] == 37378000000
-    assert result["prior_revenue"] == 25111000000
+    assert result is not None
+
+    current_end = date.fromisoformat(result["current_period_end"])
+    prior_end = date.fromisoformat(result["prior_period_end"])
+
+    assert current_end > prior_end, "current period should be after prior"
+    gap = (current_end - prior_end).days
+    assert 350<= gap<=380, f"periods should be ~1 year apart, got {gap} days"
+    assert (date.today() - current_end).days <= 730, "latest data is stale"
+    assert result["current_revenue"] > 0 and result["prior_revenue"] > 0, "revenues should be positive"
 
     for t in ["MSFT", "TSLA", "CB", "SNDK"]:
         print(t, get_annual_revenue(t))
